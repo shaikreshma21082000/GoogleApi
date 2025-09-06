@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: GoogleApiApp
+
+server:
+  port: 8081
+
+gmail:
+  credentials:
+     path: classpath:credentials.json
+  user:
+    email: '${EMAIL}'
+
+logging:
+  level:
+    com.google_api: INFO
+  file:
+    name: logs/app.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+
