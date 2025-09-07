@@ -4,6 +4,9 @@ import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.ModifyMessageRequest;
 import com.google_api.email.dto.ReplyEmailDto;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.google.api.services.gmail.model.Message;
@@ -11,6 +14,8 @@ import java.io.IOException;
 import java.util.List;
 
 import com.google.api.client.util.Base64;
+
+import static com.google_api.shared.Constant.AGENT_EMOJI;
 
 @Service
 @RequiredArgsConstructor
@@ -21,32 +26,39 @@ public class ReplyService {
     @Value("${gmail.user.email}")
     private String userEmail;
 
-    public String replyToEmail(ReplyEmailDto replyEmailDto) throws IOException {
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ReplyService.class);
 
-        String labelId = getOrCreateLabelId("AI-AGENT-REPLIED");
-        Message originalMessage = gmailService.users().messages()
-                .get(userEmail, replyEmailDto.originalMessageId())
-                .setFormat("full")
-                .execute();
+    public String replyToEmail(ReplyEmailDto replyEmailDto) {
+        try {
+            String labelId = getOrCreateLabelId("AI-AGENT-REPLIED");
+            Message originalMessage = gmailService.users().messages()
+                    .get(userEmail, replyEmailDto.originalMessageId())
+                    .setFormat("full")
+                    .execute();
 
-        String threadId = originalMessage.getThreadId();
-        StringBuilder rawEmailBuilder = getStringBuilder(replyEmailDto, originalMessage);
-        String encodedEmail = Base64.encodeBase64URLSafeString(rawEmailBuilder.toString().getBytes("UTF-8"));
+            String threadId = originalMessage.getThreadId();
+            StringBuilder rawEmailBuilder = getStringBuilder(replyEmailDto, originalMessage);
+            String encodedEmail = Base64.encodeBase64URLSafeString(rawEmailBuilder.toString().getBytes("UTF-8"));
 
-        Message message = new Message();
-        message.setRaw(encodedEmail);
-        message.setThreadId(threadId);
+            Message message = new Message();
+            message.setRaw(encodedEmail);
+            message.setThreadId(threadId);
 
-        Message sentMessage = gmailService.users().messages().send(userEmail, message).execute();
+            Message sentMessage = gmailService.users().messages().send(userEmail, message).execute();
 
-        ModifyMessageRequest originalMods = new ModifyMessageRequest()
-                .setRemoveLabelIds(List.of("UNREAD", "INBOX"));
-        gmailService.users().messages().modify(userEmail, replyEmailDto.originalMessageId(), originalMods).execute();
+            ModifyMessageRequest originalMods = new ModifyMessageRequest()
+                    .setRemoveLabelIds(List.of("UNREAD", "INBOX"));
+            gmailService.users().messages().modify(userEmail, replyEmailDto.originalMessageId(), originalMods).execute();
 
-        ModifyMessageRequest labelMods = new ModifyMessageRequest()
-                .setAddLabelIds(List.of(labelId,"UNREAD"));
-        gmailService.users().messages().modify(userEmail, sentMessage.getId(), labelMods).execute();
-        return "SUCCESS";
+            ModifyMessageRequest labelMods = new ModifyMessageRequest()
+                    .setAddLabelIds(List.of(labelId, "UNREAD"));
+            gmailService.users().messages().modify(userEmail, sentMessage.getId(), labelMods).execute();
+            logger.info(AGENT_EMOJI +"AGENT_REPLY - Successfully replied to mail with label: {}", labelId);
+            return "SUCCESS";
+        } catch (IOException e) {
+            logger.error(AGENT_EMOJI + "AGENT_REPLY - Error removing label and moving to inbox: {}", e.getMessage());
+            return "failure: " + e.getMessage();
+        }
     }
 
     private StringBuilder getStringBuilder(ReplyEmailDto replyEmailDto, Message originalMessage) {

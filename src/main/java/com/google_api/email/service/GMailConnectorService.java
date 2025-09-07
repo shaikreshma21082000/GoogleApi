@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import static com.google_api.shared.Constant.AGENT_EMOJI;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class GMailConnectorService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GMailConnectorService.class);
 
+
     public List<GmailDto> readAndLabelUnreadEmailsFromInbox(long timestampSeconds) {
         List<GmailDto> gmailDtos = new ArrayList<>();
         try {
@@ -38,17 +40,17 @@ public class GMailConnectorService {
 
 
             if (messages != null && !messages.isEmpty()) {
-                logger.info("Found " + messages.size() + " unread messages received after " + timestampSeconds + ".");
+                logger.info(AGENT_EMOJI +"AGENT_FETCH Found " + messages.size() + " unread messages received after " + timestampSeconds + ".");
                 for (Message message : messages) {
                     Message fullMessage = gmailService.users().messages().get(userEmail, message.getId()).execute();
                     gmailDtos.add(gmailMapper.messageToDto(fullMessage));
                 }
             } else {
-                logger.info("No unread messages found after the specified time.");
+                logger.info(AGENT_EMOJI +"AGENT_FETCH - No unread messages found after the specified time.");
             }
 
         } catch (IOException e) {
-            logger.error("Error reading emails: {}", e.getMessage());
+            logger.error(AGENT_EMOJI +"AGENT_FETCH - Error reading emails: {}", e.getMessage());
             return Collections.emptyList();
         }
         return gmailDtos;
@@ -67,32 +69,37 @@ public class GMailConnectorService {
             ModifyMessageRequest labelMods = new ModifyMessageRequest()
                     .setAddLabelIds(List.of(labelId));
             gmailService.users().messages().modify(userEmail, messageId, labelMods).execute();
-
+            logger.info(AGENT_EMOJI +"AGENT_MOVE - Successfully moved mail to spam with label: {}", labelName);
             return "success";
         } catch (IOException e) {
-            logger.error("Error moving message to spam: {}", e.getMessage());
+            logger.error(AGENT_EMOJI +"AGENT_MOVE - Error moving message to spam: {}", e.getMessage());
             return "failure";
         }
     }
 
-    private String getOrCreateLabelId(String labelName) throws IOException {
-        List<com.google.api.services.gmail.model.Label> labels = gmailService.users().labels().list(userEmail).execute().getLabels();
+    private String getOrCreateLabelId(String labelName) {
+        try {
+            List<com.google.api.services.gmail.model.Label> labels = gmailService.users().labels().list(userEmail).execute().getLabels();
 
-        for (com.google.api.services.gmail.model.Label label : labels) {
-            if (label.getName().equalsIgnoreCase(labelName)) {
-                return label.getId();
+            for (com.google.api.services.gmail.model.Label label : labels) {
+                if (label.getName().equalsIgnoreCase(labelName)) {
+                    return label.getId();
+                }
             }
+
+            com.google.api.services.gmail.model.Label newLabel = new com.google.api.services.gmail.model.Label()
+                    .setName(labelName)
+                    .setLabelListVisibility("labelShow")
+                    .setMessageListVisibility("show");
+
+            com.google.api.services.gmail.model.Label createdLabel =
+                    gmailService.users().labels().create(userEmail, newLabel).execute();
+
+            return createdLabel.getId();
+        } catch (IOException e) {
+            logger.error("Error moving message to spam: {}", e.getMessage());
+            return "failure";
         }
-
-        com.google.api.services.gmail.model.Label newLabel = new com.google.api.services.gmail.model.Label()
-                .setName(labelName)
-                .setLabelListVisibility("labelShow")
-                .setMessageListVisibility("show");
-
-        com.google.api.services.gmail.model.Label createdLabel =
-                gmailService.users().labels().create(userEmail, newLabel).execute();
-
-        return createdLabel.getId();
     }
 
     public String removeLabelAndMoveToInbox(String labelName, String folderName) {

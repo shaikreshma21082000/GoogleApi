@@ -10,13 +10,12 @@ gmail:
      path: classpath:credentials.json
   user:
     email: '${EMAIL}'
-
 logging:
   level:
+    root: OFF
     com.google_api: INFO
   file:
     name: logs/app.log
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-
 

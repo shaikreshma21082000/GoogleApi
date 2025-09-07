@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import static com.google_api.shared.Constant.AGENT_EMOJI;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +30,7 @@ public class CalenderService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GMailConnectorService.class);
 
-    public String createEvent(CalendarEventDto calendarEventDto) {
+    public String addEvent(CalendarEventDto calendarEventDto) {
         try {
             Event event = new Event();
             event.setSummary(calendarEventDto.getSummary());
@@ -81,40 +82,21 @@ public class CalenderService {
                 event.setLocation(meetingLink);
             }
             Event created = calendarService.events().insert(userEmail, event).execute();
-            logger.info("Created calendar event id={} htmlLink={}", created.getId(), created.getHtmlLink());
+            logger.info(AGENT_EMOJI +"AGENT_ADD_EVENT - Created calendar event id={} htmlLink={}", created.getId(), created.getHtmlLink());
             return created.getId();
         } catch (Exception e) {
-            logger.error("Failed to create calendar event: {}", e.getMessage(), e);
+            logger.error(AGENT_EMOJI +"AGENT_ADD_EVENT -Failed to create calendar event: {}", e.getMessage(), e);
             return null;
         }
     }
 
-    private String normalizeRfc3339(String input) {
-        if (input == null) return null;
-        String[] parts = input.split("T", 2);
-        if (parts.length < 1) return input;
-        String date = parts[0];
-        String rest = parts.length == 2 ? parts[1] : "";
-        String[] dateParts = date.split("-", 3);
-        if (dateParts.length != 3) return input;
-        String year = dateParts[0];
-        String month = dateParts[1].length() == 1 ? "0" + dateParts[1] : dateParts[1];
-        String day = dateParts[2].length() == 1 ? "0" + dateParts[2] : dateParts[2];
-        String normalized = year + "-" + month + "-" + day;
-        return rest.isEmpty() ? normalized : normalized + "T" + rest;
-    }
 
-    private com.google.api.client.util.DateTime toDateTime(String input) {
+    private static com.google.api.client.util.DateTime toDateTime(String input) {
         if (input == null) return null;
         try {
             return new com.google.api.client.util.DateTime(input);
         } catch (IllegalArgumentException e) {
-            String normalized = normalizeRfc3339(input);
-            try {
-                return new com.google.api.client.util.DateTime(normalized);
-            } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException("Invalid date/time format: " + input, ex);
-            }
+            throw new IllegalArgumentException("Invalid date/time format: " + input, e);
         }
     }
 

@@ -39,7 +39,6 @@ public class GoogleApiController {
                     .getEpochSecond();
 
             return mailService.readAndLabelUnreadEmailsFromInbox(timestampSeconds);
-
     }
 
     @PutMapping("/move-mail/{messageId}")
@@ -53,7 +52,7 @@ public class GoogleApiController {
     }
 
     @PostMapping("/reply")
-    public String reply(@RequestBody ReplyEmailDto replyEmailDto) throws MessagingException, IOException {
+    public String reply(@RequestBody ReplyEmailDto replyEmailDto){
         return replyService.replyToEmail(replyEmailDto);
     }
 
@@ -63,8 +62,8 @@ public class GoogleApiController {
     }
 
     @PostMapping("/add-event")
-    public String getAllEvents(@RequestBody CalendarEventDto calendarEventDto) {
-        return calenderService.createEvent(calendarEventDto);
+    public String addEvent(@RequestBody CalendarEventDto calendarEventDto) {
+        return calenderService.addEvent(calendarEventDto);
     }
 
 }
