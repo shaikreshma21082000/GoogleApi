@@ -62,7 +62,7 @@ public class GoogleApiController {
         return calenderService.getAllEventDetails();
     }
 
-    @PostMapping("/create-event")
+    @PostMapping("/add-event")
     public String getAllEvents(@RequestBody CalendarEventDto calendarEventDto) {
         return calenderService.createEvent(calendarEventDto);
     }
