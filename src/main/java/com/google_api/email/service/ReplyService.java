@@ -1,7 +1,6 @@
 package com.google_api.email.service;
 
 import com.google.api.services.gmail.Gmail;
-import com.google.api.services.gmail.model.Label;
 import com.google.api.services.gmail.model.ModifyMessageRequest;
 import com.google_api.email.dto.ReplyEmailDto;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public class ReplyService {
         gmailService.users().messages().modify(userEmail, replyEmailDto.originalMessageId(), originalMods).execute();
 
         ModifyMessageRequest labelMods = new ModifyMessageRequest()
-                .setAddLabelIds(List.of(labelId));
+                .setAddLabelIds(List.of(labelId,"UNREAD"));
         gmailService.users().messages().modify(userEmail, sentMessage.getId(), labelMods).execute();
         return "SUCCESS";
     }
@@ -63,10 +62,8 @@ public class ReplyService {
             }
         }
 
-        // Prepare reply subject
         String replySubject = originalSubject.startsWith("Re:") ? originalSubject : "Re: " + originalSubject;
 
-        // Build raw email string manually
         StringBuilder rawEmailBuilder = new StringBuilder();
         rawEmailBuilder.append("From: ").append(userEmail).append("\r\n");
         rawEmailBuilder.append("To: ").append(originalFrom).append("\r\n");
